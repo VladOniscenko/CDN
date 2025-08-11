@@ -33,15 +33,15 @@ def make_dir(rel_path: str):
     p.mkdir(parents=True, exist_ok=True)
 
 
-def save_file(rel_dir: str, filename: str, file_obj):
-    """Sla bestand op in de gegeven submap."""
-    pdir = safe_join(rel_dir) if rel_dir else BASE_DIR
-    pdir.mkdir(parents=True, exist_ok=True)
-    dest = pdir.joinpath(filename)
-    with open(dest, 'wb') as f:
+def save_file(dir: str, filename: str, file_obj) -> str:
+    path = os.path.join(BASE_DIR, dir)
+    os.makedirs(path, exist_ok=True)
+    full_path = os.path.join(path, filename)
+    with open(full_path, 'wb') as f:
         for chunk in iter(lambda: file_obj.read(1024 * 1024), b''):
             f.write(chunk)
-    return str(dest.relative_to(BASE_DIR)).replace('\\', '/')
+    return os.path.relpath(full_path, BASE_DIR)
+
 
 
 def delete_path(rel_path: str):

@@ -85,11 +85,17 @@ async def upload(
     if '..' in dir:
         raise HTTPException(status_code=400, detail='invalid dir')
 
+    # Check file type validatie: nog even met hele bestand in memory,
+    # dus tijdelijk lezen van bytes (kan met seek terug)
     content = await file.read()
     if not allowed_file(file.filename, file.content_type, content):
         raise HTTPException(status_code=400, detail='Invalid file type')
 
-    saved = storage.save_file(dir, file.filename, content)
+    # Reset pointer zodat save_file weer kan lezen vanaf begin
+    file.file.seek(0)
+
+    # Geef de file object door (niet de bytes!)
+    saved = storage.save_file(dir, file.filename, file.file)
 
     url = f"/cdn/{urllib.parse.quote(saved)}"
     return {'status': 'ok', 'path': saved, 'url': url}
