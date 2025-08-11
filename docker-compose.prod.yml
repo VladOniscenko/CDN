@@ -11,7 +11,10 @@ services:
       - "traefik.http.routers.cdn.entrypoints=websecure"
       - "traefik.http.routers.cdn.tls.certresolver=myresolver"
       - "traefik.http.services.cdn.loadbalancer.server.port=8000"
-
+    volumes:
+      - cdn-data:/data
 networks:
   traefik:
     external: true
+volumes:
+  cdn-data:
