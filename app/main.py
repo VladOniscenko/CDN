@@ -76,29 +76,29 @@ async def browse(request: Request, path: str, authorized: bool = Depends(verify_
     return templates.TemplateResponse('browse.html', {'request': request, 'current': path, 'dirs': dirs, 'files': files})
 
 # Upload, mkdir, delete alleen met wachtwoord
+from typing import List
+
 @app.post('/upload')
 async def upload(
-    file: UploadFile = File(...),
+    files: List[UploadFile] = File(...),
     dir: str = Form(''),
     authorized: bool = Depends(verify_password)
 ):
     if '..' in dir:
         raise HTTPException(status_code=400, detail='invalid dir')
 
-    # Check file type validatie: nog even met hele bestand in memory,
-    # dus tijdelijk lezen van bytes (kan met seek terug)
-    content = await file.read()
-    if not allowed_file(file.filename, file.content_type, content):
-        raise HTTPException(status_code=400, detail='Invalid file type')
+    saved_files = []
 
-    # Reset pointer zodat save_file weer kan lezen vanaf begin
-    file.file.seek(0)
+    for file in files:
+        content = await file.read()
+        if not allowed_file(file.filename, file.content_type, content):
+            raise HTTPException(status_code=400, detail=f'Invalid file type: {file.filename}')
+        file.file.seek(0)
+        saved = storage.save_file(dir, file.filename, file.file)
+        url = f"/cdn/{urllib.parse.quote(saved)}"
+        saved_files.append({'filename': file.filename, 'path': saved, 'url': url})
 
-    # Geef de file object door (niet de bytes!)
-    saved = storage.save_file(dir, file.filename, file.file)
-
-    url = f"/cdn/{urllib.parse.quote(saved)}"
-    return {'status': 'ok', 'path': saved, 'url': url}
+    return {'status': 'ok', 'files': saved_files}
 
 @app.post("/mkdir")
 async def mkdir(
