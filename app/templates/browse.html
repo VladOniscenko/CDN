@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CDN - Browse</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background-color: #f4f6f8;
+            color: #2c3e50;
+            margin: 0;
+            padding: 0;
+        }
+
+        header {
+            background: #0366d6;
+            color: #fff;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 1.5rem;
+        }
+
+        main {
+            max-width: 1100px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+
+        section {
+            background: #fff;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+        }
+
+        h2 {
+            margin-top: 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+
+        th {
+            background: #f8f9fa;
+            text-align: left;
+            padding: 0.75rem;
+            font-weight: 600;
+            border-bottom: 2px solid #e1e4e8;
+        }
+
+        td {
+            padding: 0.75rem;
+            border-bottom: 1px solid #e1e4e8;
+        }
+
+        tr:hover {
+            background: #f5f8fa;
+        }
+
+        a {
+            color: #0366d6;
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        .mini {
+            color: #6c757d;
+            font-size: 0.85em;
+        }
+
+        form {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        input[type="file"], input[name="dir"] {
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            padding: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        button {
+            background: #0366d6;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #024f9c;
+        }
+
+        ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        ul li {
+            padding: 0.25rem 0;
+        }
+    </style>
+</head>
+<body>
+<header>
+    <h1>Simple CDN — Browse: /{{ current }}</h1>
+</header>
+<main>
+    <section>
+        <h2>Upload file</h2>
+        <form action="/upload" method="post" enctype="multipart/form-data">
+            <input type="file" name="file" required/>
+            <input type="hidden" name="dir" value="{{ current }}"/>
+            <button type="submit">Upload</button>
+        </form>
+    </section>
+
+    <section>
+        <h2>Directories</h2>
+        <ul>
+            {% if current %}
+            <li><a href="/browse/">.. (root)</a></li>
+            {% endif %}
+            {% for d in dirs %}
+            <li>
+                <a href="/browse/{{ d.path }}">📁 {{ d.name }}</a>
+<!--                <form action="/delete" method="post" style="display:inline"-->
+<!--                      onsubmit="return confirm('Verwijder map {{ d.name }} en alle inhoud?');">-->
+<!--                    <input type="hidden" name="path" value="{{ d.path }}"/>-->
+<!--                    <button type="submit" style="background:none;border:none;color:#d33;cursor:pointer;"-->
+<!--                            title="Verwijder map">🗑️-->
+<!--                    </button>-->
+<!--                </form>-->
+            </li>
+            {% endfor %}
+        </ul>
+    </section>
+
+    <section>
+        <h2>Files</h2>
+        <table>
+            <thead>
+            <tr>
+                <th>Name</th>
+                <th>Size</th>
+                <th>Actions</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for f in files %}
+            <tr>
+                <td><a href="/cdn/{{ f.path }}">{{ f.name }}</a></td>
+                <td class="mini">{{ f.size }} bytes</td>
+                <td class="mini">
+                    <a href="/download/{{ f.path }}">⬇ Download</a>
+                    <form action="/delete" method="post" style="display:inline"
+                          onsubmit="return confirm('Verwijder bestand {{ f.name }}?');">
+                        <input type="hidden" name="path" value="{{ f.path }}"/>
+                        <button type="submit" style="background:none;border:none;color:#d33;cursor:pointer;"
+                                title="Verwijder bestand">🗑️
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </section>
+
+    <section>
+        <h3>Create directory</h3>
+        <form action="/mkdir" method="post">
+            <input type="hidden" name="base_dir" value="{{ current }}"/>
+            <input name="new_dir" placeholder="foldername" required/>
+            <button type="submit">Create</button>
+        </form>
+    </section>
+</main>
+</body>
+</html>
