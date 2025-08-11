@@ -57,23 +57,25 @@ def verify_password(credentials: HTTPBasicCredentials = Depends(security)):
 
 app = FastAPI(title="Simple CDN")
 
+# Mount /cdn without exposing browse
 app.mount('/cdn', StaticFiles(directory=storage.BASE_DIR), name='cdn')
 
 templates = Jinja2Templates(directory=Path(__file__).parent.joinpath('templates'))
 
+# Verwijder browse endpoints (of maak ze alleen toegankelijk met wachtwoord als je wil)
 
+# Index en browse zijn niet publiek beschikbaar, alleen met wachtwoord
 @app.get('/', response_class=HTMLResponse)
-async def index(request: Request):
+async def index(request: Request, authorized: bool = Depends(verify_password)):
     dirs, files = storage.list_dir('')
     return templates.TemplateResponse('browse.html', {'request': request, 'current': '', 'dirs': dirs, 'files': files})
 
-
 @app.get('/browse/{path:path}', response_class=HTMLResponse)
-async def browse(request: Request, path: str):
+async def browse(request: Request, path: str, authorized: bool = Depends(verify_password)):
     dirs, files = storage.list_dir(path)
     return templates.TemplateResponse('browse.html', {'request': request, 'current': path, 'dirs': dirs, 'files': files})
 
-
+# Upload, mkdir, delete alleen met wachtwoord
 @app.post('/upload')
 async def upload(
     file: UploadFile = File(...),
@@ -92,7 +94,6 @@ async def upload(
     url = f"/cdn/{urllib.parse.quote(saved)}"
     return {'status': 'ok', 'path': saved, 'url': url}
 
-
 @app.post("/mkdir")
 async def mkdir(
     base_dir: str = Form(""),
@@ -102,7 +103,6 @@ async def mkdir(
     full_path = os.path.join(base_dir, new_dir).strip("/")
     make_dir(full_path)
     return RedirectResponse(url=f"/browse/{base_dir}", status_code=303)
-
 
 @app.post('/delete')
 async def remove(
@@ -117,7 +117,7 @@ async def remove(
     parent_dir = path.rsplit('/', 1)[0]
     return RedirectResponse(url=f"/browse/{parent_dir}", status_code=303)
 
-
+# Download is publiekelijk toegankelijk op absolute pad
 @app.get('/download/{path:path}')
 async def download(path: str):
     p = storage.safe_join(path)
