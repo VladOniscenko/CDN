@@ -1,20 +1,19 @@
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Request
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Request, Depends, status
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from pathlib import Path
 import urllib.parse
 import imghdr
 import os
-from starlette.middleware.base import BaseHTTPMiddleware
+import secrets
 from dotenv import load_dotenv
 
 from . import storage
 from .storage import make_dir
 
 load_dotenv()
-
-ALLOWED_HOSTS = [h.strip() for h in os.getenv("ALLOWED_HOSTS", "").split(",") if h.strip()]
 
 ALLOWED_CONTENT_TYPES = {
     'image/jpeg',
@@ -25,14 +24,9 @@ ALLOWED_CONTENT_TYPES = {
 
 ALLOWED_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.pdf'}
 
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "changeme")
 
-class AllowedHostsMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
-        host = request.headers.get("host", "").split(":")[0]
-        if ALLOWED_HOSTS and host not in ALLOWED_HOSTS:
-            raise HTTPException(status_code=403, detail="Host not allowed")
-        return await call_next(request)
-
+security = HTTPBasic()
 
 def allowed_file(filename: str, content_type: str, file_bytes: bytes) -> bool:
     ext = os.path.splitext(filename)[1].lower()
@@ -43,7 +37,6 @@ def allowed_file(filename: str, content_type: str, file_bytes: bytes) -> bool:
         kind = imghdr.what(None, h=file_bytes)
         if kind is None:
             return False
-        # Zorg dat extensie overeenkomt met het gedetecteerde type
         if ext in ['.jpg', '.jpeg'] and kind != 'jpeg':
             return False
         if ext == '.png' and kind != 'png':
@@ -52,9 +45,17 @@ def allowed_file(filename: str, content_type: str, file_bytes: bytes) -> bool:
             return False
     return True
 
+def verify_password(credentials: HTTPBasicCredentials = Depends(security)):
+    correct_password = secrets.compare_digest(credentials.password, ADMIN_PASSWORD)
+    if not correct_password:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect password",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+    return True
 
 app = FastAPI(title="Simple CDN")
-app.add_middleware(AllowedHostsMiddleware)
 
 app.mount('/cdn', StaticFiles(directory=storage.BASE_DIR), name='cdn')
 
@@ -74,7 +75,11 @@ async def browse(request: Request, path: str):
 
 
 @app.post('/upload')
-async def upload(file: UploadFile = File(...), dir: str = Form('')):
+async def upload(
+    file: UploadFile = File(...),
+    dir: str = Form(''),
+    authorized: bool = Depends(verify_password)
+):
     if '..' in dir:
         raise HTTPException(status_code=400, detail='invalid dir')
 
@@ -89,14 +94,21 @@ async def upload(file: UploadFile = File(...), dir: str = Form('')):
 
 
 @app.post("/mkdir")
-async def mkdir(base_dir: str = Form(""), new_dir: str = Form(...)):
+async def mkdir(
+    base_dir: str = Form(""),
+    new_dir: str = Form(...),
+    authorized: bool = Depends(verify_password)
+):
     full_path = os.path.join(base_dir, new_dir).strip("/")
     make_dir(full_path)
     return RedirectResponse(url=f"/browse/{base_dir}", status_code=303)
 
 
 @app.post('/delete')
-async def remove(path: str = Form(...)):
+async def remove(
+    path: str = Form(...),
+    authorized: bool = Depends(verify_password)
+):
     if '..' in path:
         raise HTTPException(status_code=400, detail='invalid path')
     ok = storage.delete_path(path)
