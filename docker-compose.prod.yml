@@ -1,25 +1,17 @@
 services:
-  traefik:
-    image: traefik:v2.10
-    command:
-      - --api.insecure=true
-      - --providers.docker=true
-      - --entrypoints.web.address=:80
-    ports:
-      - "80:80"
-      - "8080:8080"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-
   cdn:
     build: .
-    ports:
-      - "8000:8000"
-    volumes:
-      - ./data:/data
-      - ./.env:/app/.env
+    container_name: cdn_app
     restart: unless-stopped
+    networks:
+      - traefik
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.cdn.rule=Host(`cdn.oniq.duckdns.org`)"
+      - "traefik.http.routers.cdn.entrypoints=websecure"
+      - "traefik.http.routers.cdn.tls.certresolver=myresolver"
       - "traefik.http.services.cdn.loadbalancer.server.port=8000"
+
+networks:
+  traefik:
+    external: true
