@@ -168,7 +168,7 @@
             <tbody>
             {% for f in files %}
             <tr>
-                <td><a href="/cdn/{{ f.path }}">{{ f.name }}</a></td>
+                <td><a target="_blank" href="/cdn/{{ f.path }}">{{ f.name }}</a></td>
                 <td class="mini">{{ f.size }} bytes</td>
                 <td class="mini">
                     <a href="/download/{{ f.path }}">⬇ Download</a>
