@@ -7,7 +7,7 @@ services:
       - traefik
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.cdn.rule=Host(`cdn.oniq.duckdns.org`)"
+      - "traefik.http.routers.cdn.rule=Host(`cdn.oniq.duckdns.org`, `cdn.oniq.webredirect.org`)"
       - "traefik.http.routers.cdn.entrypoints=websecure"
       - "traefik.http.routers.cdn.tls.certresolver=myresolver"
       - "traefik.http.services.cdn.loadbalancer.server.port=8000"
